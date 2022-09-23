@@ -1,0 +1,25 @@
+{
+    "os": "Windows-10-10.0.19044-SP0",
+    "python": "3.8.10",
+    "heartbeatAt": "2022-07-26T18:10:54.143269",
+    "startedAt": "2022-07-26T18:10:27.255040",
+    "docker": null,
+    "cpu_count": 8,
+    "cuda": null,
+    "args": [
+        "--model",
+        "exclusivenet_b0"
+    ],
+    "state": "running",
+    "program": "c:\\Users\\Admin\\Documents\\Technion\\Tutorials\\Deep Learning Project\\timm\\pytorch-image-models_code\\train.py",
+    "codePath": "train.py",
+    "git": {
+        "remote": null,
+        "commit": "c5e0d1c700de2e39441af9b93f745aadf34be878"
+    },
+    "email": "shaikimhi221199@gmail.com",
+    "root": "C:/Users/Admin/Documents/Technion/Tutorials/Deep Learning Project/timm/pytorch-image-models_code",
+    "host": "DESKTOP-EDAROLO",
+    "username": "Admin",
+    "executable": "C:\\Users\\Admin\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.8_qbz5n2kfra8p0\\python.exe"
+}

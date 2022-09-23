@@ -1,0 +1,1 @@
+{"braindamage_top1_accuracy": 0.0, "_timestamp": 1663737951, "_runtime": 16700, "epoch": 44, "train_loss": 7.039689521915865, "eval_loss": 0, "eval_top1": 0, "eval_top5": 0, "_step": 44, "_wandb": {"runtime": 16702}}

@@ -1,0 +1,328 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    cli_version: 0.12.16
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    python_version: 3.8.10
+    start_time: 1658858817
+    t:
+      1:
+      - 1
+      - 41
+      - 55
+      3:
+      - 13
+      - 16
+      4: 3.8.10
+      5: 0.12.16
+      8:
+      - 3
+      - 5
+aa:
+  desc: null
+  value: null
+amp:
+  desc: null
+  value: false
+apex_amp:
+  desc: null
+  value: false
+aug_splits:
+  desc: null
+  value: 0
+batch_size:
+  desc: null
+  value: 32
+bn_eps:
+  desc: null
+  value: null
+bn_momentum:
+  desc: null
+  value: null
+bn_tf:
+  desc: null
+  value: false
+channels_last:
+  desc: null
+  value: false
+checkpoint_hist:
+  desc: null
+  value: 10
+clip_grad:
+  desc: null
+  value: null
+clip_mode:
+  desc: null
+  value: norm
+color_jitter:
+  desc: null
+  value: 0.4
+cooldown_epochs:
+  desc: null
+  value: 10
+crop_pct:
+  desc: null
+  value: null
+cutmix:
+  desc: null
+  value: 0.0
+cutmix_minmax:
+  desc: null
+  value: null
+data_dir:
+  desc: null
+  value: null
+dataset:
+  desc: null
+  value: ''
+decay_epochs:
+  desc: null
+  value: 30
+decay_rate:
+  desc: null
+  value: 0.1
+dist_bn:
+  desc: null
+  value: ''
+drop:
+  desc: null
+  value: 0.0
+drop_block:
+  desc: null
+  value: null
+drop_connect:
+  desc: null
+  value: null
+drop_path:
+  desc: null
+  value: null
+epoch_repeats:
+  desc: null
+  value: 0.0
+epochs:
+  desc: null
+  value: 200
+eval_metric:
+  desc: null
+  value: top1
+experiment:
+  desc: null
+  value: timm_train
+experiment_name:
+  desc: null
+  value: baseline
+gp:
+  desc: null
+  value: null
+hflip:
+  desc: null
+  value: 0.5
+img_size:
+  desc: null
+  value: null
+initial_checkpoint:
+  desc: null
+  value: ''
+input_size:
+  desc: null
+  value: null
+interpolation:
+  desc: null
+  value: ''
+jsd:
+  desc: null
+  value: false
+local_rank:
+  desc: null
+  value: 0
+log_interval:
+  desc: null
+  value: 50
+log_wandb:
+  desc: null
+  value: true
+lr:
+  desc: null
+  value: 0.01
+lr_cycle_limit:
+  desc: null
+  value: 1
+lr_cycle_mul:
+  desc: null
+  value: 1.0
+lr_noise:
+  desc: null
+  value: null
+lr_noise_pct:
+  desc: null
+  value: 0.67
+lr_noise_std:
+  desc: null
+  value: 1.0
+mean:
+  desc: null
+  value: null
+min_lr:
+  desc: null
+  value: 1.0e-05
+mixup:
+  desc: null
+  value: 0.0
+mixup_mode:
+  desc: null
+  value: batch
+mixup_off_epoch:
+  desc: null
+  value: 0
+mixup_prob:
+  desc: null
+  value: 1.0
+mixup_switch_prob:
+  desc: null
+  value: 0.5
+model:
+  desc: null
+  value: exclusivenet_b0
+model_ema:
+  desc: null
+  value: false
+model_ema_decay:
+  desc: null
+  value: 0.9998
+model_ema_force_cpu:
+  desc: null
+  value: false
+momentum:
+  desc: null
+  value: 0.9
+native_amp:
+  desc: null
+  value: false
+no_aug:
+  desc: null
+  value: false
+no_prefetcher:
+  desc: null
+  value: false
+no_resume_opt:
+  desc: null
+  value: false
+num_classes:
+  desc: null
+  value: null
+opt:
+  desc: null
+  value: sgd
+opt_betas:
+  desc: null
+  value: null
+opt_eps:
+  desc: null
+  value: null
+output:
+  desc: null
+  value: ''
+patience_epochs:
+  desc: null
+  value: 10
+pin_mem:
+  desc: null
+  value: false
+pretrained:
+  desc: null
+  value: false
+ratio:
+  desc: null
+  value:
+  - 0.75
+  - 1.3333333333333333
+recount:
+  desc: null
+  value: 1
+recovery_interval:
+  desc: null
+  value: 0
+remode:
+  desc: null
+  value: const
+reprob:
+  desc: null
+  value: 0.0
+resplit:
+  desc: null
+  value: false
+resume:
+  desc: null
+  value: ''
+save_images:
+  desc: null
+  value: false
+scale:
+  desc: null
+  value:
+  - 0.08
+  - 1.0
+sched:
+  desc: null
+  value: step
+seed:
+  desc: null
+  value: 42
+smoothing:
+  desc: null
+  value: 0.1
+split_bn:
+  desc: null
+  value: false
+start_epoch:
+  desc: null
+  value: null
+std:
+  desc: null
+  value: null
+sync_bn:
+  desc: null
+  value: false
+torchscript:
+  desc: null
+  value: false
+train_interpolation:
+  desc: null
+  value: random
+train_split:
+  desc: null
+  value: train
+trust_ratio_power:
+  desc: null
+  value: 1
+tta:
+  desc: null
+  value: 0
+use_multi_epochs_loader:
+  desc: null
+  value: false
+val_split:
+  desc: null
+  value: validation
+validation_batch_size_multiplier:
+  desc: null
+  value: 1
+vflip:
+  desc: null
+  value: 0.0
+warmup_epochs:
+  desc: null
+  value: 3
+warmup_lr:
+  desc: null
+  value: 0.0001
+weight_decay:
+  desc: null
+  value: 0.0001
+workers:
+  desc: null
+  value: 4

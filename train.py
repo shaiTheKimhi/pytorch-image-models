@@ -21,6 +21,8 @@ import time
 from collections import OrderedDict
 from contextlib import suppress
 from datetime import datetime
+from misc import uncertainty_metrics
+
 
 import torch
 import torch.nn as nn
@@ -28,12 +30,14 @@ import torchvision.utils
 import yaml
 from torch.nn.parallel import DistributedDataParallel as NativeDDP
 
+import copy
+
 from timm import utils
 from timm.data import create_dataset, create_loader, resolve_data_config, Mixup, FastCollateMixup, AugMixDataset
 from timm.loss import JsdCrossEntropy, SoftTargetCrossEntropy, BinaryCrossEntropy, \
     LabelSmoothingCrossEntropy
 from timm.models import create_model, safe_model_name, resume_checkpoint, load_checkpoint, \
-    convert_splitbn_model, convert_sync_batchnorm, model_parameters
+    convert_splitbn_model, convert_sync_batchnorm, model_parameters#, set_fast_norm
 from timm.optim import create_optimizer_v2, optimizer_kwargs
 from timm.scheduler import create_scheduler
 from timm.utils import ApexScaler, NativeScaler
@@ -81,7 +85,7 @@ parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 # Dataset parameters
 group = parser.add_argument_group('Dataset parameters')
 # Keep this argument outside of the dataset group because it is positional.
-parser.add_argument('data_dir', metavar='DIR',
+parser.add_argument('--data_dir', metavar='DIR',
                     help='path to dataset')
 group.add_argument('--dataset', '-d', metavar='NAME', default='',
                     help='dataset type (default: ImageFolder/ImageTar if empty)')
@@ -135,6 +139,8 @@ scripting_group.add_argument('--aot-autograd', default=False, action='store_true
                     help="Enable AOT Autograd support. (It's recommended to use this option with `--fuser nvfuser` together)")
 group.add_argument('--fuser', default='', type=str,
                     help="Select jit fuser. One of ('', 'te', 'old', 'nvfuser')")
+group.add_argument('--fast-norm', default=False, action='store_true',
+                    help='enable experimental fast-norm')
 group.add_argument('--grad-checkpointing', action='store_true', default=False,
                     help='Enable gradient checkpointing through model blocks/stages')
 
@@ -315,6 +321,8 @@ group.add_argument('--output', default='', type=str, metavar='PATH',
                     help='path to output folder (default: none, current dir)')
 group.add_argument('--experiment', default='', type=str, metavar='NAME',
                     help='name of train experiment, name of sub-folder for output')
+group.add_argument('--experiment_name', default='', type=str, metavar='NAME',
+                    help='name of train experiment run')
 group.add_argument('--eval-metric', default='top1', type=str, metavar='EVAL_METRIC',
                     help='Best metric (default: "top1"')
 group.add_argument('--tta', type=int, default=0, metavar='N',
@@ -322,7 +330,7 @@ group.add_argument('--tta', type=int, default=0, metavar='N',
 group.add_argument("--local_rank", default=0, type=int)
 group.add_argument('--use-multi-epochs-loader', action='store_true', default=False,
                     help='use the multi-epochs-loader to save time at the beginning of every epoch')
-group.add_argument('--log-wandb', action='store_true', default=False,
+group.add_argument('--log-wandb', action='store_true', default=True,
                     help='log training and validation metrics to wandb')
 
 
@@ -370,7 +378,7 @@ def main():
 
     if args.rank == 0 and args.log_wandb:
         if has_wandb:
-            wandb.init(project=args.experiment, config=args)
+            wandb.init(project=args.experiment, config=args, name=f'{args.experiment_name}seed_{args.seed}')
         else:
             _logger.warning("You've requested to log metrics to wandb but package not found. "
                             "Metrics not being logged to wandb, try `pip install wandb`")
@@ -395,6 +403,8 @@ def main():
 
     if args.fuser:
         utils.set_jit_fuser(args.fuser)
+    #if args.fast_norm:
+    #    set_fast_norm()
 
     model = create_model(
         args.model,
@@ -665,13 +675,13 @@ def main():
                     _logger.info("Distributing BatchNorm running means and vars")
                 utils.distribute_bn(model, args.world_size, args.dist_bn == 'reduce')
 
-            eval_metrics = validate(model, loader_eval, validate_loss_fn, args, amp_autocast=amp_autocast)
+            eval_metrics = validate(model, loader_eval, validate_loss_fn, args, amp_autocast=amp_autocast, epoch=epoch)
 
             if model_ema is not None and not args.model_ema_force_cpu:
                 if args.distributed and args.dist_bn in ('broadcast', 'reduce'):
                     utils.distribute_bn(model_ema, args.world_size, args.dist_bn == 'reduce')
                 ema_eval_metrics = validate(
-                    model_ema.module, loader_eval, validate_loss_fn, args, amp_autocast=amp_autocast, log_suffix=' (EMA)')
+                    model_ema.module, loader_eval, validate_loss_fn, args, amp_autocast=amp_autocast, log_suffix=' (EMA)', epoch=epoch)
                 eval_metrics = ema_eval_metrics
 
             if lr_scheduler is not None:
@@ -714,9 +724,11 @@ def train_one_epoch(
 
     end = time.time()
     last_idx = len(loader) - 1
+    #last_idx = 1500 #FOR DEBUG ONLY!!
     num_updates = epoch * len(loader)
     for batch_idx, (input, target) in enumerate(loader):
         last_batch = batch_idx == last_idx
+        #last_batch = batch_idx > 100
         data_time_m.update(time.time() - end)
         if not args.prefetcher:
             input, target = input.cuda(), target.cuda()
@@ -794,6 +806,8 @@ def train_one_epoch(
             lr_scheduler.step_update(num_updates=num_updates, metric=losses_m.avg)
 
         end = time.time()
+        if last_batch:
+            break
         # end for
 
     if hasattr(optimizer, 'sync_lookahead'):
@@ -802,7 +816,7 @@ def train_one_epoch(
     return OrderedDict([('loss', losses_m.avg)])
 
 
-def validate(model, loader, loss_fn, args, amp_autocast=suppress, log_suffix=''):
+def validate(model, loader, loss_fn, args, amp_autocast=suppress, log_suffix='', epoch=-1):
     batch_time_m = utils.AverageMeter()
     losses_m = utils.AverageMeter()
     top1_m = utils.AverageMeter()
@@ -812,7 +826,9 @@ def validate(model, loader, loss_fn, args, amp_autocast=suppress, log_suffix='')
 
     end = time.time()
     last_idx = len(loader) - 1
+    #last_idx = 1500 #FOR DEBUG ONLY!!
     with torch.no_grad():
+        samples_certainties = torch.empty((0, 2))  # IDO's addition for uncertainty metrics
         for batch_idx, (input, target) in enumerate(loader):
             last_batch = batch_idx == last_idx
             if not args.prefetcher:
@@ -848,6 +864,26 @@ def validate(model, loader, loss_fn, args, amp_autocast=suppress, log_suffix='')
             top1_m.update(acc1.item(), output.size(0))
             top5_m.update(acc5.item(), output.size(0))
 
+            # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ IDO: Uncertainty metrics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            outputs_list = [torch.zeros_like(output).cuda(args.rank)] * args.world_size
+            torch.distributed.all_gather(outputs_list, output)
+            output = torch.vstack(outputs_list)
+            target = target.unsqueeze(1)  # Necessary since vstack checks that tensors are at least 2d
+            targets_list = [torch.zeros_like(target).cuda(args.rank)] * args.world_size
+            torch.distributed.all_gather(targets_list, target)
+            target = torch.vstack(targets_list)
+            target = target.squeeze(1)
+
+            if args.local_rank == 0:
+                y_scores = torch.softmax(output, dim=1)
+                y_pred = torch.max(y_scores, dim=1)
+                certainties = y_pred[0]
+                correct = y_pred[1] == target
+                samples_info = torch.stack(
+                    (certainties.cpu(), correct.cpu()))  # Each sample's certainty next to its correctness
+                samples_certainties = torch.vstack((samples_certainties, samples_info.transpose(0, 1)))
+            # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
             batch_time_m.update(time.time() - end)
             end = time.time()
             if args.local_rank == 0 and (last_batch or batch_idx % args.log_interval == 0):
@@ -860,10 +896,197 @@ def validate(model, loader, loss_fn, args, amp_autocast=suppress, log_suffix='')
                     'Acc@5: {top5.val:>7.4f} ({top5.avg:>7.4f})'.format(
                         log_name, batch_idx, last_idx, batch_time=batch_time_m,
                         loss=losses_m, top1=top1_m, top5=top5_m))
+            if last_batch:
+                break
+    
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ IDO: Uncertainty metrics ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        if args.local_rank == 0:
+            # Calculate samples uncertainties:
+            indices_sorting_by_confidence = torch.argsort(samples_certainties[:, 0], descending=True)
+            samples_certainties = samples_certainties[indices_sorting_by_confidence]
+            # Calculate metrics:
+            acc = (samples_certainties[:, 1].sum() / samples_certainties.shape[0]).item() * 100
+            discrimination = uncertainty_metrics.gamma_correlation(samples_certainties)
+            AUROC = discrimination['AUROC']
+            gamma = discrimination['gamma']
+            AURC = uncertainty_metrics.AURC_calc(samples_certainties)
+            ece15, mce15 = uncertainty_metrics.ECE_calc(samples_certainties, num_bins=15)
+            ece10, mce10 = uncertainty_metrics.ECE_calc(samples_certainties, num_bins=10)
+            ece30, mce30 = uncertainty_metrics.ECE_calc(samples_certainties, num_bins=30)
+            ece50, mce50 = uncertainty_metrics.ECE_calc(samples_certainties, num_bins=50)
+            adaptive_ece, adaptive_mce = uncertainty_metrics.ECE_calc(samples_certainties, num_bins=15,
+                                                                      bin_boundaries_scheme=uncertainty_metrics.calc_adaptive_bin_size)
+            confidence_mean = uncertainty_metrics.confidence_mean(samples_certainties)
+            confidence_median = uncertainty_metrics.confidence_median(samples_certainties)
+            confidence_gini = uncertainty_metrics.gini(samples_certainties)
+            confidence_variance = uncertainty_metrics.confidence_variance(samples_certainties)
+            coverage_accuracy_95 = uncertainty_metrics.coverage_for_desired_accuracy(samples_certainties, accuracy=0.95, start_index=200)
+            coverage_accuracy_96 = uncertainty_metrics.coverage_for_desired_accuracy(samples_certainties, accuracy=0.96, start_index=200)
+            coverage_accuracy_97 = uncertainty_metrics.coverage_for_desired_accuracy(samples_certainties, accuracy=0.97, start_index=200)
+            coverage_accuracy_98 = uncertainty_metrics.coverage_for_desired_accuracy(samples_certainties, accuracy=0.98, start_index=200)
+            coverage_accuracy_99 = uncertainty_metrics.coverage_for_desired_accuracy(samples_certainties, accuracy=0.99, start_index=200)
+            # Log metrics to weights and biases:
+            wandb.log({"accuracy": acc}, step=epoch)
+            wandb.log({"AUROC": AUROC}, step=epoch)
+            wandb.log({"AURC": AURC}, step=epoch)
+            wandb.log({"coverage_accuracy_95": coverage_accuracy_95}, step=epoch)
+            wandb.log({"coverage_accuracy_99": coverage_accuracy_99}, step=epoch)
+            wandb.log({"ece15": ece15}, step=epoch)
+            wandb.log({"mce15": mce15}, step=epoch)
+            wandb.log({"adaptive_ece": adaptive_ece}, step=epoch)
+            wandb.log({"adaptive_mce": adaptive_mce}, step=epoch)
+            wandb.log({"gamma": gamma}, step=epoch)
+            wandb.log({"confidence_mean": confidence_mean}, step=epoch)
+            wandb.log({"confidence_median": confidence_median}, step=epoch)
+            wandb.log({"confidence_gini": confidence_gini}, step=epoch)
+            wandb.log({"confidence_variance": confidence_variance}, step=epoch)
+            wandb.log({"ece10": ece10}, step=epoch)
+            wandb.log({"mce10": mce10}, step=epoch)
+            wandb.log({"ece30": ece30}, step=epoch)
+            wandb.log({"mce30": mce30}, step=epoch)
+            wandb.log({"ece50": ece50}, step=epoch)
+            wandb.log({"mce50": mce50}, step=epoch)
+            wandb.log({"coverage_accuracy_96": coverage_accuracy_96}, step=epoch)
+            wandb.log({"coverage_accuracy_97": coverage_accuracy_97}, step=epoch)
+            wandb.log({"coverage_accuracy_98": coverage_accuracy_98}, step=epoch)
+            
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+
+    #Braindamage addition
+    losses_m = utils.AverageMeter()
+    batch_time_m = utils.AverageMeter()
+    top1_m = utils.AverageMeter()
+    top5_m = utils.AverageMeter()
     metrics = OrderedDict([('loss', losses_m.avg), ('top1', top1_m.avg), ('top5', top5_m.avg)])
+    if epoch % 1 == 0:
+        top1_b = utils.AverageMeter()
+        top5_b = utils.AverageMeter()
+        weights = [1,2,4,6,8,10]
+        for w in weights: 
+            model_copy = copy.deepcopy(model)
+            with torch.no_grad():
+                model_copy = model_maniuplation_weights_and_biases_k_first_layers_mha_v_only(model_copy.cpu(), weights_to_manipulate=w, manipulation_method=lambda x: -x, k_layers=2)
+                model_copy.cuda()
+                #acc += validate_model(model, loader, loss_fn, args, amp_autocast, log_suffix, epoch)
+                last_idx = len(loader) - 1
+                #last_idx = 1500 #FOR DEBUG ONLY!!
+                for batch_idx, (input, target) in enumerate(loader): #accuracy calculator
+                    last_batch = batch_idx == last_idx
+                    if not args.prefetcher:
+                        input = input.cuda()
+                        target = target.cuda()
+                    if args.channels_last:
+                        input = input.contiguous(memory_format=torch.channels_last)
+
+                    with amp_autocast():
+                        output = model(input)
+                    if isinstance(output, (tuple, list)):
+                        output = output[0]
+
+                    # augmentation reduction
+                    reduce_factor = args.tta
+                    if reduce_factor > 1:
+                        output = output.unfold(0, reduce_factor, reduce_factor).mean(dim=2)
+                        target = target[0:target.size(0):reduce_factor]
+
+                    loss = loss_fn(output, target)
+                    acc1, acc5 = utils.accuracy(output, target, topk=(1, 5))
+                    if args.distributed:
+                        reduced_loss = utils.reduce_tensor(loss.data, args.world_size)
+                        acc1 = utils.reduce_tensor(acc1, args.world_size)
+                        acc5 = utils.reduce_tensor(acc5, args.world_size)
+                    else:
+                        reduced_loss = loss.data
+
+                    torch.cuda.synchronize()
+
+                    #losses_m.update(reduced_loss.item(), input.size(0))
+                    top1_b.update(acc1.item(), output.size(0))
+                    top5_b.update(acc5.item(), output.size(0))
+
+                    if last_batch:
+                        break
+
+    if args.local_rank == 0 and (last_batch or batch_idx % args.log_interval == 0):
+        wandb.log({"braindamage_top1_accuracy":top1_b.val}, step=epoch)
+        wandb.log({"braindamage_top5_accuracy":top5_b.val}, step=epoch)
+
 
     return metrics
+
+def model_maniuplation_weights_and_biases_k_first_layers_mha_v_only(model, weights_to_manipulate, manipulation_method=lambda x: -x, k_layers=1):
+    # For pruning maniupulation, simply lambda x: 0
+    params = []
+    for module in model.modules():
+        if isinstance(module, torch.nn.Conv2d) or isinstance(module, torch.nn.Linear):
+            params.append((module, 'weight'))
+            if module.bias is not None:
+                params.append((module, 'bias'))
+            k_layers -= 1
+        if isinstance(module, torch.nn.MultiheadAttention):
+            params.append((AttentionValueWeights(module.in_proj_weight[-module.vdim:]), 'value_weights'))
+            params.append((AttentionValueWeights(module.in_proj_bias[-module.vdim:]), 'value_weights'))
+            k_layers -= 1
+        if k_layers == 0:
+            break
+    params = tuple(params)
+    # Find topk weights to manipulate
+    top_weights = torch.topk(
+        torch.abs(torch.nn.utils.parameters_to_vector([getattr(*p) for p in params])).view(-1),
+        k=weights_to_manipulate, largest=True, sorted=True)
+    biggest_weights_indices = top_weights.indices
+    biggest_weights_indices = biggest_weights_indices.sort()[0]
+    # Iterate over weights and manipulate them
+    counter = 0
+    curr_index = 0
+    for i, module in enumerate(model.modules()):
+        if isinstance(module, torch.nn.MultiheadAttention):
+            attribute = 'in_proj_'
+        else:
+            attribute = ''
+        if isinstance(module, torch.nn.Conv2d) or isinstance(module, torch.nn.Linear) or isinstance(module, torch.nn.MultiheadAttention):
+            # for param in module.weight:
+            weights = eval(f'module.{attribute}weight')
+            biases = eval(f'module.{attribute}bias')
+            if isinstance(module, torch.nn.MultiheadAttention):
+                weights = weights[-module.vdim:]
+                biases = biases[-module.vdim:]
+            # Iterate over the weights
+            for param in weights:
+                num_weights = param.numel()
+                while counter + num_weights > biggest_weights_indices[curr_index]:
+                    weight_index = biggest_weights_indices[curr_index] - counter
+                    found_weight = param.view(-1)[weight_index]
+                    param.view(-1)[weight_index] = manipulation_method(param.view(-1)[weight_index])
+                    curr_index += 1
+                    if curr_index >= biggest_weights_indices.shape[0]:
+                        break
+                counter += num_weights
+                if curr_index >= biggest_weights_indices.shape[0]:
+                    return model
+                    # break
+            # Iterate over the biases
+            if biases is not None:
+                for param in biases:
+                    num_weights = param.numel()
+                    while counter + num_weights > biggest_weights_indices[curr_index]:
+                        weight_index = biggest_weights_indices[curr_index] - counter
+                        found_weight = param.view(-1)[weight_index]
+                        # TODO: Insert weight manipulation here, preferrably use a function
+                        param.view(-1)[weight_index] = manipulation_method(param.view(-1)[weight_index])
+                        curr_index += 1
+                        if curr_index >= biggest_weights_indices.shape[0]:
+                            break
+                    counter += num_weights
+                    if curr_index >= biggest_weights_indices.shape[0]:
+                        return model
+                        # break
+
+            if curr_index >= biggest_weights_indices.shape[0]:
+                break
+    return model
+
 
 
 if __name__ == '__main__':

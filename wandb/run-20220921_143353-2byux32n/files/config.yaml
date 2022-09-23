@@ -1,0 +1,383 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    cli_version: 0.12.17
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    python_version: 3.9.7
+    start_time: 1663760033
+    t:
+      1:
+      - 1
+      - 41
+      - 55
+      3:
+      - 13
+      - 16
+      4: 3.9.7
+      5: 0.12.17
+      8:
+      - 5
+aa:
+  desc: null
+  value: rand-m9-mstd0.5
+amp:
+  desc: null
+  value: true
+aot_autograd:
+  desc: null
+  value: false
+apex_amp:
+  desc: null
+  value: false
+aug_repeats:
+  desc: null
+  value: 0
+aug_splits:
+  desc: null
+  value: 0
+batch_size:
+  desc: null
+  value: 96
+bce_loss:
+  desc: null
+  value: false
+bce_target_thresh:
+  desc: null
+  value: null
+bn_eps:
+  desc: null
+  value: null
+bn_momentum:
+  desc: null
+  value: null
+channels_last:
+  desc: null
+  value: false
+checkpoint_hist:
+  desc: null
+  value: 10
+class_map:
+  desc: null
+  value: ''
+clip_grad:
+  desc: null
+  value: null
+clip_mode:
+  desc: null
+  value: norm
+color_jitter:
+  desc: null
+  value: 0.4
+cooldown_epochs:
+  desc: null
+  value: 10
+crop_pct:
+  desc: null
+  value: null
+cutmix:
+  desc: null
+  value: 0.0
+cutmix_minmax:
+  desc: null
+  value: null
+data_dir:
+  desc: null
+  value: /home/shai.kimhi/advancedDeep/ImageNet_training_baseline/ImageNet
+dataset:
+  desc: null
+  value: ''
+dataset_download:
+  desc: null
+  value: false
+decay_epochs:
+  desc: null
+  value: 2.4
+decay_milestones:
+  desc: null
+  value:
+  - 30
+  - 60
+decay_rate:
+  desc: null
+  value: 0.97
+device:
+  desc: null
+  value: cuda:0
+dist_bn:
+  desc: null
+  value: reduce
+distributed:
+  desc: null
+  value: false
+drop:
+  desc: null
+  value: 0.2
+drop_block:
+  desc: null
+  value: null
+drop_connect:
+  desc: null
+  value: null
+drop_path:
+  desc: null
+  value: 0.2
+epoch_repeats:
+  desc: null
+  value: 0.0
+epochs:
+  desc: null
+  value: 45
+eval_metric:
+  desc: null
+  value: top1
+experiment:
+  desc: null
+  value: exclusive2
+experiment_name:
+  desc: null
+  value: debug2
+fast_norm:
+  desc: null
+  value: false
+fuser:
+  desc: null
+  value: ''
+gp:
+  desc: null
+  value: null
+grad_checkpointing:
+  desc: null
+  value: false
+hflip:
+  desc: null
+  value: 0.5
+img_size:
+  desc: null
+  value: null
+initial_checkpoint:
+  desc: null
+  value: ''
+input_size:
+  desc: null
+  value: null
+interpolation:
+  desc: null
+  value: ''
+jsd_loss:
+  desc: null
+  value: false
+layer_decay:
+  desc: null
+  value: null
+local_rank:
+  desc: null
+  value: 0
+log_interval:
+  desc: null
+  value: 50
+log_wandb:
+  desc: null
+  value: true
+lr:
+  desc: null
+  value: 0.048
+lr_cycle_decay:
+  desc: null
+  value: 0.5
+lr_cycle_limit:
+  desc: null
+  value: 1
+lr_cycle_mul:
+  desc: null
+  value: 1.0
+lr_k_decay:
+  desc: null
+  value: 1.0
+lr_noise:
+  desc: null
+  value: null
+lr_noise_pct:
+  desc: null
+  value: 0.67
+lr_noise_std:
+  desc: null
+  value: 1.0
+mean:
+  desc: null
+  value: null
+min_lr:
+  desc: null
+  value: 1.0e-06
+mixup:
+  desc: null
+  value: 0.0
+mixup_mode:
+  desc: null
+  value: batch
+mixup_off_epoch:
+  desc: null
+  value: 0
+mixup_prob:
+  desc: null
+  value: 1.0
+mixup_switch_prob:
+  desc: null
+  value: 0.5
+model:
+  desc: null
+  value: exclusivenet_b0
+model_ema:
+  desc: null
+  value: true
+model_ema_decay:
+  desc: null
+  value: 0.9999
+model_ema_force_cpu:
+  desc: null
+  value: false
+momentum:
+  desc: null
+  value: 0.9
+native_amp:
+  desc: null
+  value: false
+no_aug:
+  desc: null
+  value: false
+no_ddp_bb:
+  desc: null
+  value: false
+no_prefetcher:
+  desc: null
+  value: false
+no_resume_opt:
+  desc: null
+  value: false
+num_classes:
+  desc: null
+  value: null
+opt:
+  desc: null
+  value: rmsproptf
+opt_betas:
+  desc: null
+  value: null
+opt_eps:
+  desc: null
+  value: 0.001
+output:
+  desc: null
+  value: ''
+patience_epochs:
+  desc: null
+  value: 10
+pin_mem:
+  desc: null
+  value: false
+prefetcher:
+  desc: null
+  value: true
+pretrained:
+  desc: null
+  value: false
+rank:
+  desc: null
+  value: 0
+ratio:
+  desc: null
+  value:
+  - 0.75
+  - 1.3333333333333333
+recount:
+  desc: null
+  value: 1
+recovery_interval:
+  desc: null
+  value: 0
+remode:
+  desc: null
+  value: pixel
+reprob:
+  desc: null
+  value: 0.2
+resplit:
+  desc: null
+  value: false
+resume:
+  desc: null
+  value: ''
+save_images:
+  desc: null
+  value: false
+scale:
+  desc: null
+  value:
+  - 0.08
+  - 1.0
+sched:
+  desc: null
+  value: step
+seed:
+  desc: null
+  value: 42
+smoothing:
+  desc: null
+  value: 0.1
+split_bn:
+  desc: null
+  value: false
+start_epoch:
+  desc: null
+  value: null
+std:
+  desc: null
+  value: null
+sync_bn:
+  desc: null
+  value: false
+torchscript:
+  desc: null
+  value: false
+train_interpolation:
+  desc: null
+  value: random
+train_split:
+  desc: null
+  value: train
+tta:
+  desc: null
+  value: 0
+use_multi_epochs_loader:
+  desc: null
+  value: false
+val_split:
+  desc: null
+  value: validation
+validation_batch_size:
+  desc: null
+  value: null
+vflip:
+  desc: null
+  value: 0.0
+warmup_epochs:
+  desc: null
+  value: 3
+warmup_lr:
+  desc: null
+  value: 1.0e-06
+weight_decay:
+  desc: null
+  value: 1.0e-05
+worker_seeding:
+  desc: null
+  value: all
+workers:
+  desc: null
+  value: 8
+world_size:
+  desc: null
+  value: 1
