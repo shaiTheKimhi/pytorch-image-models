@@ -727,6 +727,8 @@ def train_one_epoch(
     #last_idx = 1500 #FOR DEBUG ONLY!!
     num_updates = epoch * len(loader)
     for batch_idx, (input, target) in enumerate(loader):
+        
+        
         last_batch = batch_idx == last_idx
         #last_batch = batch_idx > 100
         data_time_m.update(time.time() - end)
@@ -758,7 +760,7 @@ def train_one_epoch(
                     model_parameters(model, exclude_head='agc' in args.clip_mode),
                     value=args.clip_grad, mode=args.clip_mode)
             optimizer.step()
-
+        
         if model_ema is not None:
             model_ema.update(model)
 
@@ -797,6 +799,10 @@ def train_one_epoch(
                         os.path.join(output_dir, 'train-batch-%d.jpg' % batch_idx),
                         padding=0,
                         normalize=True)
+        if args.rank == 0:
+            wandb.log({"memory/allocated(GB)": (sum(torch.cuda.memory_allocated(i) for i in range(4))/1024/1024/1024)}, step=epoch*num_updates*7+batch_idx)
+            wandb.log({"memory/reserved(GB)": (sum(torch.cuda.memory_reserved(i) for i in range(4))/1024/1024/1024)}, step=epoch*num_updates*7+batch_idx)
+            wandb.log({"memory/max(GB)": (sum(torch.cuda.max_memory_reserved(i) for i in range(4))/1024/1024/1024)}, step=epoch*num_updates*7+batch_idx)
 
         if saver is not None and args.recovery_interval and (
                 last_batch or (batch_idx + 1) % args.recovery_interval == 0):
@@ -963,7 +969,8 @@ def validate(model, loader, loss_fn, args, amp_autocast=suppress, log_suffix='',
         top1_b = utils.AverageMeter()
         top5_b = utils.AverageMeter()
         weights = [1,2,4,6,8,10]
-        for w in weights: 
+        for w_idx, w in enumerate(weights):
+            
             model_copy = copy.deepcopy(model)
             with torch.no_grad():
                 model_copy = model_maniuplation_weights_and_biases_k_first_layers_mha_v_only(model_copy.cpu(), weights_to_manipulate=w, manipulation_method=lambda x: -x, k_layers=2)
@@ -971,6 +978,7 @@ def validate(model, loader, loss_fn, args, amp_autocast=suppress, log_suffix='',
                 #acc += validate_model(model, loader, loss_fn, args, amp_autocast, log_suffix, epoch)
                 last_idx = len(loader) - 1
                 #last_idx = 1500 #FOR DEBUG ONLY!!
+                num_updates = epoch * len(loader)
                 for batch_idx, (input, target) in enumerate(loader): #accuracy calculator
                     last_batch = batch_idx == last_idx
                     if not args.prefetcher:
@@ -1004,7 +1012,13 @@ def validate(model, loader, loss_fn, args, amp_autocast=suppress, log_suffix='',
                     #losses_m.update(reduced_loss.item(), input.size(0))
                     top1_b.update(acc1.item(), output.size(0))
                     top5_b.update(acc5.item(), output.size(0))
-
+                    
+                    if args.rank == 0:
+                        wandb.log({"memory/allocated(GB)": (sum(torch.cuda.memory_allocated(i) for i in range(4))/1024/1024/1024)}, step=epoch*num_updates*7+batch_idx + w_idx*num_updates)
+                        wandb.log({"memory/reserved(GB)": (sum(torch.cuda.memory_reserved(i) for i in range(4))/1024/1024/1024)}, step=epoch*num_updates*7+batch_idx + w_idx*num_updates)
+                        wandb.log({"memory/max(GB)": (sum(torch.cuda.max_memory_reserved(i) for i in range(4))/1024/1024/1024)}, step=epoch*num_updates*7+batch_idx + w_idx*num_updates)
+        
+        
                     if last_batch:
                         break
 
