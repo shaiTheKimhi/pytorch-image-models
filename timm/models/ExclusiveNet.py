@@ -102,7 +102,7 @@ class ExclusiveNet(nn.Module):
     #Current model working with 2,3 skips, check for 5 and 10
     def __init__(self, skip=5, exclusive_forward=False, skip_start=False, num_classes=1000, **kwargs): 
         #TODO: if exlusive forward, remove all channels of indices greater than number of featuers and not greater than layer number
-        super().__init__()
+        super().__init__(**kwargs)
         out_c = num_classes
         self.skip = skip
         self.exclusive_forward = exclusive_forward

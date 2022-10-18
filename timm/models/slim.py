@@ -9,9 +9,9 @@ from .helpers import build_model_with_cfg
 
 class SlimNetEx(nn.Module):
     #Current model working with 2,3 skips, check for 5 and 10
-    def __init__(self, skip=2, exlusive_forward=False, skip_start=False, out_c=1000): 
+    def __init__(self, skip=2, exlusive_forward=False, skip_start=False, out_c=1000, **kwargs): 
         #TODO: if exlusive forward, remove all channels of indices greater than number of featuers and not greater than layer number
-        super().__init__()
+        super().__init__(**kwargs)
         self.skip = skip
         self.exclusive_forward = exlusive_forward
         self.skip_start = skip_start
@@ -183,5 +183,5 @@ if __name__ == "__main__":
     print(res.shape)
 
 @register_model
-def exclusivenet_b0(pretrained, **kwargs):
+def slim_exclusivenet_b0(pretrained, **kwargs):
     return build_model_with_cfg(SlimNetEx, "slim_exclusivenet_b0", False, **kwargs)
