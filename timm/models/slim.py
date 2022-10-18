@@ -11,12 +11,13 @@ class SlimNetEx(nn.Module):
     #Current model working with 2,3 skips, check for 5 and 10
     def __init__(self, skip=2, exlusive_forward=False, skip_start=False, num_classes=1000, **kwargs): 
         #TODO: if exlusive forward, remove all channels of indices greater than number of featuers and not greater than layer number
-        super().__init__(**kwargs)
+        super().__init__()
+        self.num_classes = num_classes
         self.skip = skip
         self.exclusive_forward = exlusive_forward
         self.skip_start = skip_start
 
-        baseline = torchvision.models.efficientnet_b0()
+        baseline = torchvision.models.efficientnet_b0(num_classes=num_classes)
 
         self.features = baseline.features
         self.features = self.fit_channels(self.features, skip)
