@@ -9,7 +9,7 @@ from .helpers import build_model_with_cfg
 
 class SlimNetEx(nn.Module):
     #Current model working with 2,3 skips, check for 5 and 10
-    def __init__(self, skip=2, exlusive_forward=False, skip_start=False, out_c=1000, **kwargs): 
+    def __init__(self, skip=2, exlusive_forward=False, skip_start=False, num_classes=1000, **kwargs): 
         #TODO: if exlusive forward, remove all channels of indices greater than number of featuers and not greater than layer number
         super().__init__(**kwargs)
         self.skip = skip
@@ -28,13 +28,13 @@ class SlimNetEx(nn.Module):
         self.classifier = baseline.classifier
         start = 3 if self.skip_start else 0
         if skip == 2:
-            self.classifier[1] = nn.Linear(in_features=1280 + (len(self.features) * (skip-1)) - 1 + start, out_features=out_c, bias=True) #need to check for skip=2, can change out_features
+            self.classifier[1] = nn.Linear(in_features=1280 + (len(self.features) * (skip-1)) - 1 + start, out_features=num_classes, bias=True) #need to check for skip=2, can change out_features
         elif skip == 1:
-            self.classifier[1] = nn.Linear(in_features=1280 + len(self.features) * skip - 1 + start, out_features=out_c, bias=True) #out classes changed for imagenet, should be parameter
+            self.classifier[1] = nn.Linear(in_features=1280 + len(self.features) * skip - 1 + start, out_features=num_classes, bias=True) #out classes changed for imagenet, should be parameter
         elif skip == 3:
-            self.classifier[1] = nn.Linear(in_features=1288 + start, out_features=out_c, bias=True)
+            self.classifier[1] = nn.Linear(in_features=1288 + start, out_features=num_classes, bias=True)
         else:
-            self.classifier[1] = nn.Linear(in_features=1291, out_features=out_c, bias=True)
+            self.classifier[1] = nn.Linear(in_features=1291, out_features=num_classes, bias=True)
 
     def forward(self, x):
         start = [x] if self.skip_start else [] #we would want a third option allowing skip from start only to first 4 layers
