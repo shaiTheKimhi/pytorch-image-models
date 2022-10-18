@@ -109,7 +109,7 @@ class ExclusiveNet(nn.Module):
         self.skip_start = skip_start
         self.num_classes = out_c
 
-        baseline = torchvision.models.efficientnet_b0()
+        baseline = torchvision.models.efficientnet_b0(**kwargs)
 
         self.features = baseline.features
         self.features = self.fit_channels(self.features, skip)

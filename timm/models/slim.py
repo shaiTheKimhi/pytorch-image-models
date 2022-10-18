@@ -17,7 +17,7 @@ class SlimNetEx(nn.Module):
         self.exclusive_forward = exlusive_forward
         self.skip_start = skip_start
 
-        baseline = torchvision.models.efficientnet_b0(num_classes=num_classes)
+        baseline = torchvision.models.efficientnet_b0(num_classes=num_classes, **kwargs)
 
         self.features = baseline.features
         self.features = self.fit_channels(self.features, skip)
@@ -41,7 +41,7 @@ class SlimNetEx(nn.Module):
         start = [x] if self.skip_start else [] #we would want a third option allowing skip from start only to first 4 layers
         prev = []
         for i in range(len(self.features)):
-            prev_pooled = [start[0]]
+            prev_pooled = [start[0]] if self.skip_start else []
             for j in range(len(prev[:-1])):
                 d = i - j
                 if d == 0:
@@ -59,8 +59,8 @@ class SlimNetEx(nn.Module):
             if len(prev) == 0:
                 inx = x
             else:
-                #temp = prev[-1] if not self.exclusiveforward else prev[-1][:]
-                inx = torch.cat(prev_pooled + [prev[-1]], dim=1) 
+                temp = prev[-1] if not self.exclusive_forward else prev[-1][:,:-(8-i)*self.skip,:,:] if i < 8 else prev[-1]
+                inx = torch.cat(prev_pooled + [temp], dim=1) 
 
             prev.append(self.features[i](inx))
 
@@ -80,7 +80,6 @@ class SlimNetEx(nn.Module):
         x = F.adaptive_avg_pool2d(x, (1, 1))
         x = torch.flatten(x, 1)
         return self.classifier(x)
-
 
 
     def fit_channels(self, layers, skip): #fix channels reduced by constant
