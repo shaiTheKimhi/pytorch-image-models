@@ -60,7 +60,7 @@ from .xception_aligned import *
 from .xcit import *
 from .ExclusiveNet import *
 from .slim import *
-from .ResNetEx import *
+#from .ResNetEx import *
 
 from .factory import create_model, parse_model_name, safe_model_name
 from .helpers import load_checkpoint, resume_checkpoint, model_parameters
